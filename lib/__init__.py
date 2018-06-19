@@ -20,14 +20,19 @@ class Tree:
         return self.root.find(item) is not None
 
     def __delitem__(self, item):
-        result = self.root.find(item)
-        if result is None:
+        if self.root is None:
             raise ValueError
         else:
-            if result.parent.left == result:
-                result.parent.left = result.delete_head()
+            result = self.root.find(item)
+            if result is None:
+                raise ValueError
             else:
-                result.parent.right = result.delete_head()
+                if result.parent is None:
+                    self.root = result.delete_head()
+                elif result.parent.left == result:
+                    result.parent.left = result.delete_head()
+                else:
+                    result.parent.right = result.delete_head()
 
     def output(self):
         data = []
@@ -44,8 +49,23 @@ class Tree:
         for tabs, key in data:
             print(tabs * " " + str(key))
 
+    def get_order(self, return_values=False):
+        data = []
+        if self.root is None:
+            return []
+        else:
 
+            def fun_with_values(key, value, param):
+                data.append((key, value))
 
+            def fun_without_values(key, value, param):
+                data.append(key)
+
+            if return_values:
+                self.root.inorder_traversal(fun_with_values)
+            else:
+                self.root.inorder_traversal(fun_without_values)
+            return data
 
 
 
@@ -71,12 +91,24 @@ class Node:
             else:
                 self.right.insert(key, value)
 
+    def is_leaf(self):
+        return self.left is None and self.right is None
+
     def preorder_traversal(self, fun, param=None, propagate=lambda x: x):
         fun(self.key, self.value, param)
         if self.left is not None:
             self.left.preorder_traversal(fun, propagate(param), propagate)
         if self.right is not None:
             self.right.preorder_traversal(fun, propagate(param), propagate)
+
+    def inorder_traversal(self, fun, param=None, propagate=lambda x: x):
+        if self.left is not None:
+            self.left.inorder_traversal(fun, propagate(param), propagate)
+        fun(self.key, self.value, param)
+        if self.right is not None:
+            self.right.inorder_traversal(fun, propagate(param), propagate)
+
+
 
     def find(self, key):
         if self.key == key:
