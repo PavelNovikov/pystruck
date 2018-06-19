@@ -34,6 +34,10 @@ class Tree:
                 else:
                     result.parent.right = result.delete_head()
 
+    def check_consistency(self):
+        if self.root is not None:
+            self.root.check_consistency()
+
     def output(self):
         data = []
         if self.root is None:
@@ -44,12 +48,11 @@ class Tree:
 
             def fun(key, value, param):
                 data.append((param, key))
+                print(param * " " + str(key))
 
             self.root.preorder_traversal(fun, 0, propagate)
-        for tabs, key in data:
-            print(tabs * " " + str(key))
 
-    def get_order(self, return_values=False):
+    def get_ordering(self, return_values=False):
         data = []
         if self.root is None:
             return []
@@ -68,6 +71,51 @@ class Tree:
             return data
 
 
+def replace_node(old_node, new_node):
+    assert old_node is not None
+    assert new_node is not None
+    new_node.parent = old_node.parent if old_node.parent != new_node else None
+    if old_node.left != new_node:
+        new_node.left = old_node.left
+        if old_node.left is not None:
+            old_node.left.parent = new_node
+    else:
+        new_node.left = None
+    if old_node.right != new_node:
+        new_node.right = old_node.right
+        if old_node.right is not None:
+            old_node.right.parent = new_node
+    else:
+        new_node.right = None
+    if old_node.parent is not None:
+        if old_node.parent.left == old_node:
+            old_node.parent.left = new_node
+        else:
+            old_node.parent.right = new_node
+
+
+def replace_node_with_subtree(old_node, subtree_root):
+    assert old_node is not None
+    assert subtree_root is not None
+    subtree_root.parent = old_node.parent if old_node.parent != subtree_root else None
+    if old_node.parent is not None:
+        if old_node.parent.left == old_node:
+            old_node.parent.left = subtree_root
+        else:
+            old_node.parent.right = subtree_root
+    if old_node.left is not None and old_node.left != subtree_root:
+        if subtree_root.left is None:
+            subtree_root.left = old_node.left
+            old_node.left.parent = subtree_root
+        else:
+            raise ValueError
+    if old_node.right is not None and old_node.right != subtree_root:
+        if subtree_root.right is None:
+            subtree_root.right = old_node.right
+            old_node.right.parent = subtree_root
+        else:
+            raise ValueError
+
 
 
 class Node:
@@ -78,6 +126,14 @@ class Node:
         self.left = None
         self.right = None
         self.parent = parent
+
+    def check_consistency(self):
+        if self.left is not None:
+            assert self.left.parent == self
+            self.left.check_consistency()
+        if self.right is not None:
+            assert self.right.parent == self
+            self.right.check_consistency()
 
     def insert(self, key, value):
         if key < self.key:
@@ -108,7 +164,12 @@ class Node:
         if self.right is not None:
             self.right.inorder_traversal(fun, propagate(param), propagate)
 
-
+    def remove(self):
+        if self.parent is not None:
+            if self.parent.left == self:
+                self.parent.left = None
+            else:
+                self.parent.right = None
 
     def find(self, key):
         if self.key == key:
@@ -125,18 +186,26 @@ class Node:
                 return self.right.find(key)
 
     def delete_head(self):
-        if self.left is None:
-            replacement = self.right
-        elif self.right is None:
-            replacement = self.left
+        if self.left is None or self.right is None:
+            if self.left is None:
+                replacement = self.right
+            else:
+                replacement = self.left
+            if replacement is None:
+                self.remove()
+            else:
+                replace_node_with_subtree(self, replacement)
         else:
             successor = self.successor()
-            successor.parent.left = successor.delete_head()
+            if successor.parent != self:
+                new_child = successor.delete_head()
+                if new_child is not None:
+                    new_child.parent = successor.parent
+
+                replace_node(self, successor)
+            else:
+                replace_node_with_subtree(self, successor)
             replacement = successor
-        if replacement is not None:
-            replacement.parent = self.parent
-            replacement.left = self.left
-            replacement.right = self.right
         return replacement
 
     def rotate_left(self):
