@@ -4,53 +4,59 @@ from collections import defaultdict
 
 
 def test_random_ordering(events, verbose=False):
-    keys = defaultdict(lambda : 0)
+    keys = set()
     t = AVLTree()
     for i in range(len(events)):
         event_type, key = events[i]
         t.check_consistency()
+        t.check_balance_invariant()
         if event_type == "del":
             del t[key]
 
-            keys[key] -= 1
+            keys.remove(key)
             if verbose:
                 print("del ", str(key))
         else:
-            keys[key] += 1
+            keys.add(key)
             t.insert(key, None)
             if verbose:
                 print("insert ", str(key))
         t.check_consistency()
+        t.check_balance_invariant()
         if verbose:
             t.output()
 
-    reference_sorting = [x for key, count in keys.items() for x in [key] * count]
-    # if verbose:
-    #     print(t.get_ordering())
-    #     print(reference_sorting)
+    if verbose:
+        print(t.get_ordering())
+        print(sorted(list(keys)))
 
-    assert sorted(reference_sorting) == t.get_ordering()
+    assert sorted(list(keys)) == t.get_ordering()
 
 
 def generate_events(n_events, deletion_probability):
     result = []
     keys = []
+    generated = set()
     for i in range(n_events):
         if random.random() < deletion_probability and len(keys) > 0:
             index = random.randint(0, len(keys) - 1)
             key = keys[index]
             result.append(("del", key))
             del keys[index]
+            generated.remove(key)
         else:
-            new_key = random.randint(0, 1000)
+            new_key = random.randint(0, 10 * n_events)
+            while new_key in generated:
+                new_key = random.randint(0, 10 * n_events)
             keys.append(new_key)
+            generated.add(new_key)
             result.append(("insert", new_key))
     return result
 
 
-for i in range(100000):
+for i in range(1000000):
     print(i)
-    events = generate_events(100, 0.3)
+    events = generate_events(10, 0.3)
     try:
         test_random_ordering(events)
     except Exception as e:
@@ -58,29 +64,3 @@ for i in range(100000):
         test_random_ordering(events, verbose=True)
 
 
-# t = AVLTree()
-# t.insert(229, 1)
-# del t[229]
-# t.insert(186, 1)
-# t.insert(986, 1)
-# t.insert(365, 1)
-# t.insert(990, 1)
-# t.insert(745, 1)
-# t.insert(787, 1)
-# t.output()
-# del t[186]
-# t.insert(787,1)
-
-# t.insert(721,1)
-# t.insert(445,1)
-# t.insert(111,1)
-# del t[445]
-# t.output()
-
-#t.output()
-# t.insert(4, 1)
-# t.insert(3, 1)
-# t.insert(6, 1)
-# del t[5]
-# t.output()
-# #

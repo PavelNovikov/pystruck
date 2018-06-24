@@ -129,6 +129,7 @@ class Node:
     def check_consistency(self):
         if self.left is not None:
             assert self.left.parent == self
+
             self.left.check_consistency()
         if self.right is not None:
             assert self.right.parent == self
@@ -140,11 +141,13 @@ class Node:
                 self.left = Node(key, value, self)
             else:
                 self.left.insert(key, value)
-        else:
+        elif key > self.key:
             if self.right is None:
                 self.right = Node(key, value, self)
             else:
                 self.right.insert(key, value)
+        else:
+            raise ValueError
 
     def is_leaf(self):
         return self.left is None and self.right is None
@@ -253,6 +256,10 @@ class Node:
 
 class AVLTree(Tree):
 
+    def check_balance_invariant(self):
+        if self.root is not None:
+            self.root.check_balance_invariant()
+
     def insert(self, key, value):
         if self.root is None:
             self.root = AVLNode(key, value)
@@ -276,23 +283,20 @@ class AVLTree(Tree):
         if self.root is None:
             raise ValueError
         else:
-            result = self.root.find(item)
-            if result is None:
-                raise ValueError
-            else:
-                if result.parent is None:
-                    self.root = result.delete_head()
-                else:
-                    parent = result.parent
-                    if result.parent.left == result:
-                        parent.left = result.delete_head()
-                    else:
-                        parent.right = result.delete_head()
-                    parent.recompute_height_and_balance()
-
+            self.root = self.root.delete(item)
 
 
 class AVLNode(Node):
+
+    def check_balance_invariant(self):
+        left_height = 0
+        right_height = 0
+        if self.left is not None:
+            left_height = self.left.check_balance_invariant()
+        if self.right is not None:
+            right_height = self.right.check_balance_invariant()
+        assert abs(left_height - right_height) <= 1
+        return max(left_height, right_height) + 1
 
     def __init__(self, key, value, parent=None):
         Node.__init__(self, key, value, parent)
@@ -356,7 +360,7 @@ class AVLNode(Node):
                 else:
                     self.height = 1 + max(self.left_height(), self.right_height())
                     return self
-        else:
+        elif key > self.key:
             if self.right is None:
                 self.right = AVLNode(key, value, self)
                 if self.balance_factor == 0:
@@ -373,6 +377,8 @@ class AVLNode(Node):
                 else:
                     self.height = 1 + max(self.left_height(), self.right_height())
                     return self
+        else:
+            raise ValueError
 
     def find(self, key):
         if self.key == key:
@@ -388,18 +394,55 @@ class AVLNode(Node):
             else:
                 return self.right.find(key)
 
-    def delete_head(self):
-        result = super(AVLNode, self).delete_head()
-        if result is None:
-            self.recompute_height_and_balance()
-            return None
+    def delete(self, key):
+        if self.key == key:
+            return self.delete_head()
+        elif key < self.key:
+            if self.left is None:
+                raise ValueError
+            else:
+                self.left = self.left.delete(key)
+                if self.left is not None:
+                    self.left.parent = self
+                self.recompute_height_and_balance()
         else:
+            if self.right is None:
+                raise ValueError
+            else:
+                self.right = self.right.delete(key)
+                if self.right is not None:
+                    self.right.parent = self
+                self.recompute_height_and_balance()
+        if self.balance_factor > 1:
+            return self.correct_right_overbalance()
+        elif self.balance_factor < -1:
+            return self.correct_left_overbalance()
+        else:
+            return self
+
+    def delete_head(self):
+
+        if self.right is None:
+            result = self.left
+            if result is not None:
+                result.parent = self.parent
+            return result
+        else:
+            result = self.right.smallest()
+            result.parent = self.parent
+            result.right = self.right.delete(result.key)
+            result.left = self.left
+            if result.left is not None:
+                result.left.parent = result
+            if result.right is not None:
+                result.right.parent = result
+
             result.recompute_height_and_balance()
             if result.balance_factor > 1:
-                return result.correct_right_overbalance()
+                result = result.correct_right_overbalance()
             elif result.balance_factor < -1:
-                return result.correct_left_overbalance()
-            else:
-                return result
+                result = result.correct_left_overbalance()
+
+            return result
 
 
