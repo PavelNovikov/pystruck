@@ -46,9 +46,9 @@ class Tree:
             def propagate(param):
                 return param + 1
 
-            def fun(key, value, param):
-                data.append((param, key))
-                print(param * " " + str(key))
+            def fun(node, param):
+                data.append((param, node.key))
+                print(param * " " + str(node.key))
 
             self.root.preorder_traversal(fun, 0, propagate)
 
@@ -58,11 +58,11 @@ class Tree:
             return []
         else:
 
-            def fun_with_values(key, value, param):
-                data.append((key, value))
+            def fun_with_values(node, param):
+                data.append((node.key, node.value))
 
-            def fun_without_values(key, value, param):
-                data.append(key)
+            def fun_without_values(node, param):
+                data.append(node.key)
 
             if return_values:
                 self.root.inorder_traversal(fun_with_values)
@@ -117,7 +117,6 @@ def replace_node_with_subtree(old_node, subtree_root):
             raise ValueError
 
 
-
 class Node:
 
     def __init__(self, key, value, parent=None):
@@ -151,7 +150,7 @@ class Node:
         return self.left is None and self.right is None
 
     def preorder_traversal(self, fun, param=None, propagate=lambda x: x):
-        fun(self.key, self.value, param)
+        fun(self, param)
         if self.left is not None:
             self.left.preorder_traversal(fun, propagate(param), propagate)
         if self.right is not None:
@@ -160,7 +159,7 @@ class Node:
     def inorder_traversal(self, fun, param=None, propagate=lambda x: x):
         if self.left is not None:
             self.left.inorder_traversal(fun, propagate(param), propagate)
-        fun(self.key, self.value, param)
+        fun(self, param)
         if self.right is not None:
             self.right.inorder_traversal(fun, propagate(param), propagate)
 
@@ -211,7 +210,8 @@ class Node:
     def rotate_left(self):
         right = self.right
         self.right = right.left
-        right.left.parent = self
+        if right.left is not None:
+            right.left.parent = self
         right.parent = self.parent
         self.parent = right
         right.left = self
@@ -220,7 +220,8 @@ class Node:
     def rotate_right(self):
         left = self.left
         self.left = left.right
-        left.right.parent = self
+        if left.right is not None:
+            left.right.parent = self
         left.parent = self.parent
         self.parent = left
         left.right = self
@@ -248,5 +249,157 @@ class Node:
                 previous = candidate
                 candidate = candidate.parent
             return candidate
+
+
+class AVLTree(Tree):
+
+    def insert(self, key, value):
+        if self.root is None:
+            self.root = AVLNode(key, value)
+        else:
+            self.root = self.root.insert(key, value)
+
+    def output(self):
+        data = []
+        if self.root is None:
+            print("The tree is empty")
+        else:
+            def propagate(param):
+                return param + 1
+
+            def fun(node, param):
+                print(param * " " + "%d[%d]" % (node.key, node.height))
+
+            self.root.preorder_traversal(fun, 0, propagate)
+
+    def __delitem__(self, item):
+        if self.root is None:
+            raise ValueError
+        else:
+            result = self.root.find(item)
+            if result is None:
+                raise ValueError
+            else:
+                if result.parent is None:
+                    self.root = result.delete_head()
+                else:
+                    parent = result.parent
+                    if result.parent.left == result:
+                        parent.left = result.delete_head()
+                    else:
+                        parent.right = result.delete_head()
+                    parent.recompute_height_and_balance()
+
+
+
+class AVLNode(Node):
+
+    def __init__(self, key, value, parent=None):
+        Node.__init__(self, key, value, parent)
+        self.balance_factor = 0
+        self.height = 1
+
+    def left_height(self):
+        if self.left is None:
+            return 0
+        else:
+            return self.left.height
+
+    def right_height(self):
+        if self.right is None:
+            return 0
+        else:
+            return self.right.height
+
+    def recompute_height_and_balance(self):
+        self.height = 1 + max(self.left_height(), self.right_height())
+        self.balance_factor = self.right_height() - self.left_height()
+
+    def rotate_left(self):
+        result = super(AVLNode, self).rotate_left()
+        result.left.recompute_height_and_balance()
+        result.recompute_height_and_balance()
+        return result
+
+    def rotate_right(self):
+        result = super(AVLNode, self).rotate_right()
+        result.right.recompute_height_and_balance()
+        result.recompute_height_and_balance()
+        return result
+
+    def correct_left_overbalance(self):
+        if self.left.balance_factor == 1:
+            self.left = self.left.rotate_left()
+        return self.rotate_right()
+
+    def correct_right_overbalance(self):
+        if self.right.balance_factor == -1:
+            self.right = self.right.rotate_right()
+        result = self.rotate_left()
+        return result
+
+    def insert(self, key, value):
+        if key < self.key:
+            if self.left is None:
+                self.left = AVLNode(key, value, self)
+                if self.balance_factor == 0:
+                    self.balance_factor = -1
+                else:
+                    self.balance_factor = 0
+                self.height = 2
+                return self
+            else:
+                self.left = self.left.insert(key, value)
+                self.balance_factor = self.right_height() - self.left_height()
+                if self.balance_factor < -1:
+                    return self.correct_left_overbalance()
+                else:
+                    self.height = 1 + max(self.left_height(), self.right_height())
+                    return self
+        else:
+            if self.right is None:
+                self.right = AVLNode(key, value, self)
+                if self.balance_factor == 0:
+                    self.balance_factor = 1
+                else:
+                    self.balance_factor = 0
+                self.height = 2
+                return self
+            else:
+                self.right = self.right.insert(key, value)
+                self.balance_factor = self.right_height() - self.left_height()
+                if self.balance_factor > 1:
+                    return self.correct_right_overbalance()
+                else:
+                    self.height = 1 + max(self.left_height(), self.right_height())
+                    return self
+
+    def find(self, key):
+        if self.key == key:
+            return self
+        elif key < self.key:
+            if self.left is None:
+                return None
+            else:
+                return self.left.find(key)
+        else:
+            if self.right is None:
+                return None
+            else:
+                return self.right.find(key)
+
+    def delete_head(self):
+        result = super(AVLNode, self).delete_head()
+        if result is None:
+            self.recompute_height_and_balance()
+            return None
+        else:
+            result.recompute_height_and_balance()
+            if result.balance_factor > 1:
+                return result.correct_right_overbalance()
+            elif result.balance_factor < -1:
+                return result.correct_left_overbalance()
+            else:
+                return result
 
 
